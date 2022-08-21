@@ -1690,12 +1690,6 @@ class TestGem < Gem::TestCase
     end
   end
 
-  def add_bundler_full_name(names)
-    names << "bundler-#{Bundler::VERSION}".freeze
-    names.sort!
-    names
-  end
-
   def test_looks_for_gemdeps_files_automatically_from_binstubs
     path = File.join(@tempdir, "gd-tmp")
 
@@ -2031,6 +2025,12 @@ You may need to `bundle install` to install missing gems
   end
 
   private
+
+  def add_bundler_full_name(names)
+    names << "bundler-#{Bundler::VERSION}".freeze
+    names.sort!
+    names
+  end
 
   def ruby_install_name(name)
     with_clean_path_to_ruby do
