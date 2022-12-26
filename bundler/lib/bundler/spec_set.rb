@@ -15,7 +15,7 @@ module Bundler
     end
 
     def for(dependencies, check = false, platforms = [nil])
-      handled = ["bundler"].product(platforms).map {|k| [k, true] }.to_h
+      handled = {}
       deps = dependencies.product(platforms)
       specs = []
 
