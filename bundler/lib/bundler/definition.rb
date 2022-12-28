@@ -299,7 +299,7 @@ module Bundler
 
       if @locked_bundler_version
         locked_major = @locked_bundler_version.segments.first
-        current_major = Bundler.gem_version.segments.first
+        current_major = resolved_bundler_version.segments.first
 
         updating_major = locked_major < current_major
       end
@@ -337,6 +337,10 @@ module Bundler
         end
         version
       end
+    end
+
+    def resolved_bundler_version
+      @resolved_bundler_version ||= resolve.find {|spec| spec.name == "bundler" }&.version || Bundler.gem_version
     end
 
     def to_lock
@@ -463,7 +467,7 @@ module Bundler
     private :sources
 
     def nothing_changed?
-      !@source_changes && !@dependency_changes && !@new_platform && !@path_changes && !@local_changes && !@incomplete_lockfile
+      !@source_changes && !@dependency_changes && !@new_platform && !@path_changes && !@local_changes && !@incomplete_lockfile && !@unlocking_bundler
     end
 
     def unlocking?
@@ -481,10 +485,11 @@ module Bundler
     end
 
     def dependencies_with_bundler
-      return dependencies unless @unlocking_bundler
-      return dependencies if dependencies.map(&:name).include?("bundler")
-
-      [Dependency.new("bundler", @unlocking_bundler)] + dependencies
+      @dependencies_with_bundler ||= if @unlocking_bundler && !dependencies.map(&:name).include?("bundler")
+        [Dependency.new("bundler", @unlocking_bundler)] + dependencies
+      else
+        dependencies
+      end
     end
 
     def resolution_packages
@@ -549,7 +554,7 @@ module Bundler
     def start_resolution
       result = resolver.start(expanded_dependencies)
 
-      SpecSet.new(SpecSet.new(result).for(dependencies, false, @platforms))
+      SpecSet.new(SpecSet.new(result).for(dependencies_with_bundler, false, @platforms))
     end
 
     def precompute_source_requirements_for_indirect_dependencies?
@@ -607,6 +612,7 @@ module Bundler
         [@path_changes, "the gemspecs for path gems changed"],
         [@local_changes, "the gemspecs for git local gems changed"],
         [@incomplete_lockfile, "your lock file is missing some gems"],
+        [@unlocking_bundler, "an update to the version of Bundler itself was requested"],
       ].select(&:first).map(&:last).join(", ")
     end
 
@@ -849,8 +855,12 @@ module Bundler
         source_requirements[dep.name] = sources.metadata_source
       end
 
-      unless @unlocking_bundler
-        source_requirements[:default_bundler] = source_requirements["bundler"] || sources.default_source
+      default_bundler_source = source_requirements["bundler"] || sources.default_source
+
+      if @unlocking_bundler
+        default_bundler_source.add_dependency_names("bundler")
+      else
+        source_requirements[:default_bundler] = default_bundler_source
         source_requirements["bundler"] = sources.metadata_source # needs to come last to override
       end
 

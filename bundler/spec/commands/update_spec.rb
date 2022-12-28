@@ -1239,7 +1239,7 @@ RSpec.describe "bundle update --ruby" do
 end
 
 RSpec.describe "bundle update --bundler" do
-  it "updates the bundler version in the lockfile without re-resolving" do
+  it "updates the bundler version in the lockfile" do
     build_repo4 do
       build_gem "rack", "1.0"
     end
@@ -1249,8 +1249,6 @@ RSpec.describe "bundle update --bundler" do
       gem "rack"
     G
     lockfile lockfile.sub(/(^\s*)#{Bundler::VERSION}($)/, '\11.0.0\2')
-
-    FileUtils.rm_r gem_repo4
 
     bundle :update, :bundler => true, :artifice => "compact_index", :verbose => true
     expect(out).to include("Using bundler #{Bundler::VERSION}")
